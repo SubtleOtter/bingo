@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Office Bingo</title>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+:root{
+    --bg-grad-1:#dbeafe;
+    --bg-grad-2:#f8fafc;
+    --text-main:#111;
+    --square-bg:#ffffff;
+    --square-border:#444;
+    --square-text:#111;
+    --blue:#19599d;
+    --red:#d7262d;
+}
+
+body{
+    margin:0;
+    padding:30px;
+    font-family:Arial, Helvetica, sans-serif;
+    background:linear-gradient(135deg,var(--bg-grad-1),var(--bg-grad-2));
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    color:var(--text-main);
+    position:relative;
+}
+
+.airmail-stripe{
+
+    height:10px;
+
+    width:100%;
+
+    max-width:692px;
+
+    border-radius:4px;
+
+    background:repeating-linear-gradient(45deg, var(--red) 0 16px, var(--blue) 16px 32px);
+
+    margin-bottom:18px;
+
+}
+
+h1{
+    margin-bottom:5px;
+    font-size:42px;
+    color:var(--blue);
+}
+
+.controls{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-items:center;
+}
+
+button{
+    margin:20px 10px;
+    padding:12px 24px;
+    font-size:18px;
+    border:none;
+    border-radius:10px;
+    background:var(--blue);
+    color:white;
+    cursor:pointer;
+}
+
+button:hover{
+    filter:brightness(1.1);
+}
+
+.headers{
+    display:grid;
+    grid-template-columns:repeat(5,132px);
+    gap:8px;
+    margin-bottom:8px;
+}
+
+.header-letter{
+    text-align:center;
+    font-size:28px;
+    font-weight:bold;
+    color:var(--red);
+    font-family:'Courier New', Courier, monospace;
+    letter-spacing:1px;
+}
+
+.board{
+    display:grid;
+    grid-template-columns:repeat(5,132px);
+    gap:8px;
+}
+
+.square{
+
+    background:var(--square-bg);
+
+    border:2px solid var(--square-border);
+
+    border-radius:12px;
+
+    height:132px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    text-align:center;
+
+    padding:6px;
+
+    cursor:pointer;
+
+    transition:.2s;
+
+    font-size:14px;
+
+    font-family:'Courier New', Courier, monospace;
+
+    font-weight:bold;
+
+    color:var(--square-text);
+
+    overflow:hidden;
+
+    line-height:1.15;
+
+    word-break:normal;
+
+    overflow-wrap:normal;
+
+    white-space:normal;
+
+}
+
+.square:hover{
+
+    transform:scale(1.05);
+
+}
+
+.board.locked .square:hover{
+
+    transform:none;
+
+}
+
+.marked{
+
+    background:var(--blue);
+
+    color:white;
+    border-style:solid;
+    border-color:var(--blue);
+
+}
+
+.free{
+
+    background:var(--red);
+
+    color:white;
+    border-style:solid;
+    border-color:var(--red);
+
+}
+
+.free.marked{
+
+    background:var(--red);
+
+    border-color:var(--red);
+
+}
+
+.square.locked{
+
+    cursor:not-allowed;
+
+}
+
+.board.locked .square{
+
+    cursor:not-allowed;
+
+    opacity:.88;
+
+}
+
+#banner{
+
+    position:fixed;
+
+    top:40%;
+
+    left:50%;
+
+    transform:translate(-50%,-50%) scale(.6);
+
+    background:var(--blue);
+
+    color:#ffffff;
+
+    border:4px solid var(--red);
+
+    font-size:36px;
+
+    font-weight:bold;
+
+    padding:24px 48px;
+
+    border-radius:16px;
+
+    box-shadow:0 10px 40px rgba(0,0,0,.35);
+
+    text-align:center;
+
+    z-index:1000;
+
+    opacity:0;
+
+    pointer-events:none;
+
+    transition:opacity .4s ease, transform .4s ease;
+
+}
+
+#banner.show{
+
+    opacity:1;
+
+    transform:translate(-50%,-50%) scale(1);
+
+}
+
+@media(max-width:700px){
+
+.board, .headers{
+
+grid-template-columns:repeat(5,82px);
+
+}
+
+.square{
+
+height:82px;
+
+font-size:10px;
+
+padding:3px;
+
+}
+
+.header-letter{
+    font-size:18px;
+}
+
+#banner{
+
+    font-size:20px;
+
+    padding:16px 24px;
+
+}
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>✉️ Station Bingo ✉️</h1>
+
+<div class="airmail-stripe"></div>
+
+<div class="controls">
+<button id="newCardBtn" onclick="newCard()">📮 New Card</button>
+</div>
+
+<div id="banner">You have won more overtime!!</div>
+
+<div class="headers">
+<div class="header-letter">B</div>
+<div class="header-letter">I</div>
+<div class="header-letter">N</div>
+<div class="header-letter">G</div>
+<div class="header-letter">O</div>
+</div>
+
+<div class="board" id="board"></div>
+
+<script>
+
+const phrases=[
+
+"Reminds us how horribly we performed.",
+"“… and that, so...”",
+"“Thank you, I appreciate you.”",
+"Sighs, repeatedly.",
+"“Parcels are done.”",
+"“The mail is up.”",
+"Gets into an argument with Richard.",
+"Breathes in sharply, repeatedly.",
+"“It’s (DOIS) not showing that much overtime.”",
+"“Getting up and out of here.”",
+"“Unauthorized overtime.”",
+"“Asbestos.”",
+"“Routes showing ‘X’ minutes under.”",
+"“I’ve got ‘X’ minutes/hours for you on...”",
+"“Unsatisfactory.”",
+"Obviously lies.",
+"“Two gallons of water.”",
+"“Coverage is built into the route.”",
+"Calls/Attempts to call to yell at you.",
+"“There’s not much to case.”",
+"“The mail is light.”",
+"“Get all of the mail out of the hot case.”",
+"“Dog spray.”",
+"Threatens an investigative interview."
+
+];
+
+const STORAGE_KEY="officeBingoGame";
+
+let gameState={
+
+hasCelebratedBingo:false,
+
+hasCelebratedBlackout:false,
+
+cardStartDate:null
+
+};
+
+let bannerTimeout=null;
+
+function shuffle(array){
+
+for(let i=array.length-1;i>0;i--){
+
+let j=Math.floor(Math.random()*(i+1));
+
+[array[i],array[j]]=[array[j],array[i]];
+
+}
+
+}
+
+function computeFitSize(square,maxSize){
+
+let fontSize=maxSize;
+
+square.style.fontSize=fontSize+"px";
+
+while((square.scrollHeight>square.clientHeight||square.scrollWidth>square.clientWidth)&&fontSize>10){
+
+fontSize-=0.5;
+
+square.style.fontSize=fontSize+"px";
+
+}
+
+return fontSize;
+
+}
+
+function fitAllSquares(){
+
+const squares=document.querySelectorAll(".square");
+
+if(!squares.length) return;
+
+let minSize=22;
+
+squares.forEach(function(sq){
+
+const size=computeFitSize(sq,22);
+
+if(size<minSize) minSize=size;
+
+});
+
+squares.forEach(function(sq){
+
+sq.style.fontSize=minSize+"px";
+
+});
+
+}
+
+let resizeTimeout=null;
+
+window.addEventListener("resize",function(){
+
+if(resizeTimeout) clearTimeout(resizeTimeout);
+
+resizeTimeout=setTimeout(fitAllSquares,150);
+
+});
+
+function attachSquareEvents(square){
+
+square.addEventListener("click",function(){
+
+if(square.classList.contains("free")) return;
+
+if(gameState.hasCelebratedBlackout) return;
+
+square.classList.toggle("marked");
+
+checkBingo();
+
+saveGame();
+
+});
+
+}
+
+function buildBoard(){
+
+gameState.hasCelebratedBingo=false;
+
+gameState.hasCelebratedBlackout=false;
+
+gameState.cardStartDate=new Date().toISOString();
+
+const board=document.getElementById("board");
+
+board.innerHTML="";
+
+let items=[...phrases];
+
+shuffle(items);
+
+let phraseIndex=0;
+
+for(let i=0;i<25;i++){
+
+const square=document.createElement("div");
+
+square.className="square";
+
+if(i===12){
+
+square.textContent="Break the geofence.";
+
+square.classList.add("free");
+square.classList.add("marked");
+
+}else{
+
+square.textContent=items[phraseIndex];
+phraseIndex++;
+
+}
+
+attachSquareEvents(square);
+
+board.appendChild(square);
+
+}
+
+hideBanner();
+
+updateNewCardButtonLabel();
+
+document.getElementById("board").classList.remove("locked");
+
+fitAllSquares();
+
+saveGame();
+
+}
+
+function updateNewCardButtonLabel(){
+
+const btn=document.getElementById("newCardBtn");
+
+if(!gameState.cardStartDate){
+
+btn.textContent="📮 New Card";
+
+return;
+
+}
+
+const d=new Date(gameState.cardStartDate);
+
+const formatted=d.toLocaleDateString(undefined,{month:"numeric",day:"numeric",year:"numeric"});
+
+btn.textContent="📮 "+formatted;
+
+}
+
+function newCard(){
+
+buildBoard();
+
+}
+
+function saveGame(){
+
+const squares=document.querySelectorAll(".square");
+
+const state={
+
+squares:Array.from(squares).map(function(sq){
+
+return{
+
+text:sq.textContent,
+
+marked:sq.classList.contains("marked"),
+
+free:sq.classList.contains("free")
+
+};
+
+}),
+
+hasCelebratedBingo:gameState.hasCelebratedBingo,
+
+hasCelebratedBlackout:gameState.hasCelebratedBlackout,
+
+cardStartDate:gameState.cardStartDate
+
+};
+
+localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+
+}
+
+function loadGame(){
+
+const saved=localStorage.getItem(STORAGE_KEY);
+
+if(!saved) return false;
+
+try{
+
+const state=JSON.parse(saved);
+
+if(!state.squares||state.squares.length!==25) return false;
+
+const board=document.getElementById("board");
+
+board.innerHTML="";
+
+state.squares.forEach(function(sqData){
+
+const square=document.createElement("div");
+
+square.className="square";
+
+square.textContent=sqData.text;
+
+if(sqData.free) square.classList.add("free");
+
+if(sqData.marked) square.classList.add("marked");
+
+attachSquareEvents(square);
+
+board.appendChild(square);
+
+});
+
+gameState.hasCelebratedBingo=!!state.hasCelebratedBingo;
+
+gameState.hasCelebratedBlackout=!!state.hasCelebratedBlackout;
+
+gameState.cardStartDate=state.cardStartDate||new Date().toISOString();
+
+updateNewCardButtonLabel();
+
+fitAllSquares();
+
+if(gameState.hasCelebratedBlackout){
+
+showBanner("You have won unauthorized penalty overtime!",false);
+
+document.getElementById("board").classList.add("locked");
+
+}
+
+return true;
+
+}catch(e){
+
+return false;
+
+}
+
+}
+
+function showBanner(text,autoHide){
+
+const banner=document.getElementById("banner");
+
+if(bannerTimeout){
+
+clearTimeout(bannerTimeout);
+
+bannerTimeout=null;
+
+}
+
+banner.textContent=text;
+
+banner.classList.add("show");
+
+if(autoHide){
+
+bannerTimeout=setTimeout(function(){
+
+banner.classList.remove("show");
+
+},2500);
+
+}
+
+}
+
+function hideBanner(){
+
+const banner=document.getElementById("banner");
+
+if(bannerTimeout){
+
+clearTimeout(bannerTimeout);
+
+bannerTimeout=null;
+
+}
+
+banner.classList.remove("show");
+
+}
+
+function celebrateBingo(){
+
+confetti({
+
+particleCount:250,
+
+spread:180,
+
+origin:{y:.6}
+
+});
+
+showBanner("You have won more overtime!!",true);
+
+}
+
+function celebrateBlackout(){
+
+confetti({
+
+particleCount:250,
+
+spread:180,
+
+origin:{y:.6}
+
+});
+
+showBanner("You have won unauthorized penalty overtime!",false);
+
+document.getElementById("board").classList.add("locked");
+
+}
+
+function checkBingo(){
+
+const squares=document.querySelectorAll(".square");
+
+const wins=[
+
+[0,1,2,3,4],
+[5,6,7,8,9],
+[10,11,12,13,14],
+[15,16,17,18,19],
+[20,21,22,23,24],
+
+[0,5,10,15,20],
+[1,6,11,16,21],
+[2,7,12,17,22],
+[3,8,13,18,23],
+[4,9,14,19,24],
+
+[0,6,12,18,24],
+[4,8,12,16,20]
+
+];
+
+let isBingo=false;
+
+for(const combo of wins){
+
+let winner=true;
+
+for(const index of combo){
+
+if(!squares[index].classList.contains("marked")){
+
+winner=false;
+
+break;
+
+}
+
+}
+
+if(winner){
+
+isBingo=true;
+
+break;
+
+}
+
+}
+
+let isBlackout=true;
+
+for(const sq of squares){
+
+if(!sq.classList.contains("marked")){
+
+isBlackout=false;
+
+break;
+
+}
+
+}
+
+if(isBlackout&&!gameState.hasCelebratedBlackout){
+
+celebrateBlackout();
+
+gameState.hasCelebratedBlackout=true;
+
+}else if(isBingo&&!gameState.hasCelebratedBingo){
+
+celebrateBingo();
+
+gameState.hasCelebratedBingo=true;
+
+}
+
+}
+
+if(!loadGame()){
+
+buildBoard();
+
+}
+
+</script>
+
+</body>
+</html>
